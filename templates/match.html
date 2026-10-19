@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+{% from "_macros.html" import crest, comp_logo %}
+{% block title %}{{ m.home.short }} vs {{ m.away.short }}{% endblock %}
+
+{% block content %}
+<div class="card match-hero" style="--accent: {{ comp.accent }}">
+  <p class="breadcrumb">
+    {% if comp.code %}<a href="{{ url_for('main.competition_detail', code=comp.code) }}">{{ comp.name }}</a>{% else %}{{ comp.name }}{% endif %}
+    {% if m.stage in ('REGULAR_SEASON', 'LEAGUE_STAGE', 'GROUP_STAGE') and m.matchday %} · Fecha {{ m.matchday }}{% elif m.stage_label %} · {{ m.stage_label }}{% endif %}
+    · {{ m.local_date }}
+  </p>
+  <div class="mh-body">
+    <div class="mh-team">{{ crest(m.home.crest, m.home.tla, 'xl') }}<span>{{ m.home.name }}</span></div>
+    <div class="mh-score {{ m.state }}">
+      {% if m.hg is not none %}<div class="mh-goals"><b>{{ m.hg }}</b><i>-</i><b>{{ m.ag }}</b></div>
+      {% else %}<div class="mh-goals mh-hour">{{ m.hour }}</div>{% endif %}
+      <div class="mh-status {{ 'live-dot' if m.state == 'live' }}">{{ m.status_label if m.state != 'scheduled' else 'Programado' }}</div>
+      {% if m.ht and m.state != 'scheduled' %}<small class="muted">Entretiempo {{ m.ht }}</small>{% endif %}
+      {% if m.pens %}<small class="muted">Penales {{ m.pens }}</small>{% endif %}
+    </div>
+    <div class="mh-team">{{ crest(m.away.crest, m.away.tla, 'xl') }}<span>{{ m.away.name }}</span></div>
+  </div>
+  {% if m.venue or m.referee %}
+  <p class="mh-info muted">{% if m.venue %}🏟️ {{ m.venue }}{% endif %}{% if m.venue and m.referee %} · {% endif %}{% if m.referee %}Árbitro: {{ m.referee }}{% endif %}</p>
+  {% endif %}
+</div>
+
+<div class="tabs">
+  <a class="tab {{ 'active' if tab == 'resumen' }}" href="{{ url_for('main.match_detail', match_id=m.id, tab='resumen') }}">Resumen</a>
+  <a class="tab {{ 'active' if tab == 'alineaciones' }}" href="{{ url_for('main.match_detail', match_id=m.id, tab='alineaciones') }}">Alineaciones</a>
+</div>
+
+{% if tab == 'resumen' %}
+  <div class="card">
+    {% if m.events %}
+    <ul class="timeline">
+      {% for e in m.events %}
+      <li class="ev ev-{{ e.side }}">
+        <span class="ev-min">{{ e.minute }}'{% if e.extra %}+{{ e.extra }}{% endif %}</span>
+        <span class="ev-icon">{{ {'goal':'⚽','penalty':'⚽','own_goal':'⚽','yellow':'🟨','red':'🟥','yellow_red':'🟨🟥','sub':'🔄'}[e.kind] }}</span>
+        <span class="ev-text"><b>{{ e.title }}</b>{% if e.detail %} <small class="muted">{{ e.detail }}</small>{% endif %}{% if e.score %} <small class="ev-score">{{ e.score }}</small>{% endif %}</span>
+      </li>
+      {% endfor %}
+    </ul>
+    {% elif m.state == 'scheduled' %}
+      <p class="empty">El partido todavía no empezó. Acá van a aparecer los goles, tarjetas y cambios.</p>
+    {% else %}
+      <p class="empty">Tu plan de la API no incluye el detalle de eventos de este partido, o todavía no hay datos.</p>
+    {% endif %}
+  </div>
+
+{% else %}
+  {% if m.has_lineups %}
+    <div class="pitch">
+      {% for side_key, team in (('home', m.home), ('away', m.away)) %}
+        {% set lu = m.lineups[side_key] %}
+        {% if lu.rows %}
+        <div class="pitch-half {{ side_key }}">
+          <div class="pitch-label">{{ team.short }}{% if lu.formation %} · {{ lu.formation }}{% endif %}</div>
+          {% set order = [0, 1, 2, 3] if side_key == 'home' else [3, 2, 1, 0] %}
+          {% for i in order %}
+            {% if lu.rows[i] %}
+            <div class="pitch-row">
+              {% for p in lu.rows[i] %}
+              <div class="player {{ side_key }}"><span class="shirt">{{ p.number if p.number is not none else '' }}</span><span class="pname">{{ p.short }}</span></div>
+              {% endfor %}
+            </div>
+            {% endif %}
+          {% endfor %}
+        </div>
+        {% endif %}
+      {% endfor %}
+    </div>
+    <p class="legend">Los jugadores se ordenan por línea (arquero, defensa, mediocampo, ataque) según la posición que informa la API.</p>
+
+    <div class="two-cols lineups">
+      {% for side_key, team in (('home', m.home), ('away', m.away)) %}
+        {% set lu = m.lineups[side_key] %}
+        <div class="card">
+          <h3 class="table-title">{{ team.short }}</h3>
+          {% if lu.coach %}<p class="muted">DT: {{ lu.coach }}</p>{% endif %}
+          {% if lu.bench %}
+          <p class="bench-title">Suplentes</p>
+          <ul class="bench">
+            {% for p in lu.bench %}<li><span class="num">{{ p.number if p.number is not none else '' }}</span> {{ p.name }} <small class="muted">{{ p.position }}</small></li>{% endfor %}
+          </ul>
+          {% endif %}
+        </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="card"><p class="empty">
+      {% if m.state == 'scheduled' %}Las alineaciones se publican poco antes de que empiece el partido.
+      {% else %}La API no informó alineaciones para este partido (puede depender del plan gratuito o de la competición).{% endif %}
+    </p></div>
+  {% endif %}
+{% endif %}
+{% endblock %}

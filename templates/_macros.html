@@ -1,0 +1,78 @@
+{# Piezas reutilizables de la interfaz #}
+
+{# Escudo: imagen de la API; si falla, se muestran las iniciales #}
+{% macro crest(url, tla, size='md') %}
+  <span class="crest-wrap crest-{{ size }}">
+    {% if url %}<img src="{{ url }}" alt="" loading="lazy" data-tla="{{ tla }}" onerror="crestFallback(this)">
+    {% else %}<span class="crest-gen">{{ tla }}</span>{% endif %}
+  </span>
+{% endmacro %}
+
+{# Emblema de una competición #}
+{% macro comp_logo(code, size='md') %}
+  <span class="crest-wrap crest-{{ size }}"><img src="https://crests.football-data.org/{{ code }}.png" alt="" loading="lazy" data-tla="{{ code }}" onerror="crestFallback(this)"></span>
+{% endmacro %}
+
+{# Fila de partido (estilo Promiedos): estado a la izquierda, equipos y goles a la derecha #}
+{% macro match_row(m, show_date=False) %}
+  <a class="mrow {{ m.state }}" href="{{ url_for('main.match_detail', match_id=m.id) }}">
+    <div class="mrow-status">
+      {% if show_date and m.date %}<span class="mrow-date">{{ m.date|fecha_corta }}</span>{% endif %}
+      {% if m.state == 'scheduled' %}<span>{{ m.hour }}</span>
+      {% elif m.state == 'live' %}<span class="live-dot">{{ m.status_label }}</span>
+      {% else %}<span>{{ m.status_label }}</span>{% endif %}
+    </div>
+    <div class="mrow-teams">
+      {% for side, g in ((m.home, m.hg), (m.away, m.ag)) %}
+      <div class="mteam {{ 'winner' if m.state == 'finished' and g is not none and ((loop.first and m.hg > m.ag) or (loop.last and m.ag > m.hg)) }}">
+        {{ crest(side.crest, side.tla, 'sm') }}
+        <span class="mteam-name">{{ side.short }}</span>
+        <b class="mteam-goals">{{ g if g is not none else '' }}{% if m.pens and g is not none %}<small> ({{ m.pens.split('-')[loop.index0] }})</small>{% endif %}</b>
+      </div>
+      {% endfor %}
+    </div>
+  </a>
+{% endmacro %}
+
+{# Tabla de posiciones (formato de la API) #}
+{% macro standings_table(rows) %}
+  <div class="table-wrap">
+    <table class="standings">
+      <thead>
+        <tr>
+          <th class="pos">#</th>
+          <th class="team">Equipo</th>
+          <th title="Partidos jugados">PJ</th>
+          <th title="Victorias">G</th>
+          <th title="Empates">E</th>
+          <th title="Derrotas">P</th>
+          <th class="opt" title="Goles a favor">GF</th>
+          <th class="opt" title="Goles en contra">GC</th>
+          <th title="Diferencia de gol">DG</th>
+          <th class="pts" title="Puntos">Pts</th>
+          <th class="opt form-col">Forma</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in rows %}
+        {% set gd = r.goalDifference or 0 %}
+        <tr class="{{ 'leader' if r.position == 1 }}">
+          <td class="pos">{{ r.position }}</td>
+          <td class="team"><span class="team-cell">{{ crest(r.team.crest, r.team.tla, 'sm') }}<span>{{ r.team.shortName or r.team.name }}</span></span></td>
+          <td>{{ r.playedGames }}</td>
+          <td>{{ r.won }}</td>
+          <td>{{ r.draw }}</td>
+          <td>{{ r.lost }}</td>
+          <td class="opt">{{ r.goalsFor }}</td>
+          <td class="opt">{{ r.goalsAgainst }}</td>
+          <td class="{{ 'pos-gd' if gd > 0 else 'neg-gd' if gd < 0 }}">{{ '%+d'|format(gd) if gd != 0 else 0 }}</td>
+          <td class="pts">{{ r.points }}</td>
+          <td class="opt form-col">
+            <span class="form">{% for f in (r.form or '').split(',') if f %}<i class="f-{{ f }}">{{ {'W':'G','D':'E','L':'P'}[f] }}</i>{% endfor %}</span>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% endmacro %}

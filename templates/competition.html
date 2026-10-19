@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+{% from "_macros.html" import standings_table, match_row, comp_logo, crest %}
+{% block title %}{{ comp.name }}{% endblock %}
+
+{% macro round_url(i) %}{{ url_for('main.competition_detail', code=comp.code, ronda=i) }}#fixture{% endmacro %}
+
+{% block content %}
+<div class="comp-header" style="--accent: {{ comp.accent }}">
+  {{ comp_logo(comp.code, 'xl') }}
+  <div>
+    <p class="breadcrumb"><a href="{{ url_for('main.competitions') }}">Competiciones</a> / {{ comp.name }}</p>
+    <h1>{{ comp.name }}</h1>
+    <p class="muted">{{ comp.country }}{% if season.startDate %} · Temporada {{ season.startDate[:4] }}/{{ season.endDate[2:4] }}{% endif %}</p>
+  </div>
+</div>
+
+<div class="comp-layout">
+
+  {# ================= Columna izquierda: tabla + estadísticas ================= #}
+  <div class="comp-main">
+    <section>
+      {% if errors.tabla %}
+        <div class="card"><p class="empty">No se pudo cargar la tabla: {{ errors.tabla.message }}</p></div>
+      {% else %}
+        {% for t in tables %}
+          <div class="card">
+            <h3 class="table-title">{{ t.title or 'Tabla de posiciones' }}</h3>
+            {{ standings_table(t.rows) }}
+          </div>
+        {% else %}
+          <div class="card"><p class="empty">Esta competición no tiene tabla de posiciones (por ejemplo, en fase eliminatoria).</p></div>
+        {% endfor %}
+        {% if tables %}<p class="legend">PJ: partidos jugados · G: ganados · E: empatados · P: perdidos · GF/GC: goles a favor/en contra · DG: diferencia de gol</p>{% endif %}
+      {% endif %}
+    </section>
+
+    <section class="stats-section">
+      <h2 class="section-title">Estadísticas personales</h2>
+      {% if errors.stats %}
+        <div class="card"><p class="empty">No se pudieron cargar las estadísticas: {{ errors.stats.message }}</p></div>
+      {% elif stats %}
+        <div class="stats-grid">
+          {% for card in stats %}
+          <div class="card stat-card">
+            <h3>{{ card.title }}</h3>
+            <ul class="stat-list">
+              {% for r in card.rows %}
+              <li class="{{ 'extra' if loop.index > 6 }}">
+                {{ crest(r.team.crest, r.team.tla, 'sm') }}
+                <span class="stat-name">{{ r.name }}</span>
+                <b class="stat-val">{{ r.value }}</b>
+              </li>
+              {% endfor %}
+            </ul>
+            {% if card.rows|length > 6 %}<button type="button" class="more-btn" data-more>VER MÁS ⌄</button>{% endif %}
+          </div>
+          {% endfor %}
+        </div>
+        <p class="legend">Datos de football-data.org: rankings entre los máximos goleadores de la competición (la API no publica rankings de otras estadísticas).</p>
+      {% else %}
+        <div class="card"><p class="empty">Todavía no hay estadísticas de jugadores.</p></div>
+      {% endif %}
+    </section>
+  </div>
+
+  {# ================= Columna derecha: partidos por fecha ================= #}
+  <aside class="fixture-panel card" id="fixture" style="--accent: {{ comp.accent }}">
+    <h3 class="panel-title">Temporada</h3>
+    {% if errors.partidos %}
+      <p class="empty">No se pudieron cargar los partidos: {{ errors.partidos.message }}</p>
+    {% elif rounds %}
+      <div class="round-nav">
+        {% if selected > 0 %}<a class="arrow" href="{{ round_url(selected - 1) }}" aria-label="Fecha anterior">‹</a>{% else %}<span class="arrow off">‹</span>{% endif %}
+
+        <details class="round-picker">
+          <summary>{{ rounds[selected].label }} <span class="caret">▾</span></summary>
+          <div class="round-list">
+            <a class="round-item now {{ 'active' if selected == current }}" href="{{ round_url(current) }}">Partidos actuales</a>
+            {% for r in rounds %}
+              <a class="round-item {{ 'active' if loop.index0 == selected }}" href="{{ round_url(loop.index0) }}">{{ r.label }}</a>
+            {% endfor %}
+          </div>
+        </details>
+
+        {% if selected < rounds|length - 1 %}<a class="arrow" href="{{ round_url(selected + 1) }}" aria-label="Fecha siguiente">›</a>{% else %}<span class="arrow off">›</span>{% endif %}
+      </div>
+
+      {% if selected != current %}
+        <a class="goto-now" href="{{ round_url(current) }}">Ir a la fecha actual ({{ rounds[current].label }})</a>
+      {% else %}
+        <p class="now-label">Partidos actuales</p>
+      {% endif %}
+
+      {% for day, items in day_groups %}
+        <div class="day-sep">{{ day|fecha_corta }}</div>
+        {% for m in items %}{{ match_row(m) }}{% endfor %}
+      {% endfor %}
+    {% else %}
+      <p class="empty">No hay partidos para mostrar.</p>
+    {% endif %}
+  </aside>
+
+</div>
+{% endblock %}

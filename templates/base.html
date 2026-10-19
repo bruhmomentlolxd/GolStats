@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0a0e16">
+  <title>{% block title %}Inicio{% endblock %} · GolStats</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <script>
+    // Si una imagen de escudo no carga, la reemplaza por las iniciales del equipo
+    function crestFallback(img) {
+      var s = document.createElement("span");
+      s.className = "crest-gen";
+      s.textContent = img.dataset.tla || "?";
+      img.replaceWith(s);
+    }
+  </script>
+</head>
+<body data-live="{{ 1 if has_live else 0 }}">
+  {% set ep = request.endpoint %}
+  <header class="topbar">
+    <div class="container topbar-inner">
+      <a class="brand" href="{{ url_for('main.index') }}"><span class="brand-ball">⚽</span> Gol<span>Stats</span></a>
+      <nav class="nav-desktop">
+        <a href="{{ url_for('main.index') }}" class="{{ 'active' if ep == 'main.index' }}">Partidos</a>
+        <a href="{{ url_for('main.competitions') }}" class="{{ 'active' if ep in ('main.competitions', 'main.competition_detail') }}">Competiciones</a>
+      </nav>
+    </div>
+  </header>
+
+  {% if api_warning %}
+  <div class="warn-banner"><div class="container">⚠️ {{ api_warning }}</div></div>
+  {% endif %}
+
+  <div class="container layout">
+    <aside class="sidebar">
+      <p class="sidebar-title">Competiciones</p>
+      {% for c in all_comps %}
+        <a href="{{ url_for('main.competition_detail', code=c.code) }}" class="side-link {{ 'active' if active_code == c.code }}" style="--accent: {{ c.accent }}">
+          <span class="crest-wrap crest-sm"><img src="https://crests.football-data.org/{{ c.code }}.png" alt="" loading="lazy" data-tla="{{ c.code }}" onerror="crestFallback(this)"></span>
+          <span>{{ c.name }}</span>
+        </a>
+      {% endfor %}
+    </aside>
+    <main>
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+
+  <footer class="footer container">
+    <p>GolStats · Proyecto escolar · Datos de <a href="https://www.football-data.org" target="_blank" rel="noopener">football-data.org</a></p>
+  </footer>
+
+  <nav class="nav-mobile">
+    <a href="{{ url_for('main.index') }}" class="{{ 'active' if ep == 'main.index' }}"><span>📅</span>Partidos</a>
+    <a href="{{ url_for('main.competitions') }}" class="{{ 'active' if ep in ('main.competitions', 'main.competition_detail') }}"><span>🏆</span>Competiciones</a>
+  </nav>
+
+  <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>

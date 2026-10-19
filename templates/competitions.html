@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% from "_macros.html" import comp_logo %}
+{% block title %}Competiciones{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <h1>Competiciones</h1>
+  <p>Entrá a una competición para ver su tabla de posiciones, sus partidos y sus goleadores.</p>
+</div>
+
+<div class="grid grid-3">
+  {% for c in all_comps %}
+  <a class="card comp-card" href="{{ url_for('main.competition_detail', code=c.code) }}" style="--accent: {{ c.accent }}">
+    {{ comp_logo(c.code, 'lg') }}
+    <h3>{{ c.name }}</h3>
+    <p>{{ c.country }}</p>
+  </a>
+  {% endfor %}
+</div>
+{% endblock %}
